@@ -1,13 +1,14 @@
+import { Drizzle, usr } from '@st-achievements/database';
+import { safeAsync } from '@st-api/core';
 import {
   createCallableHandler,
   FirebaseAdminAuth,
-  FirebaseAuth,
   inject,
   Logger,
 } from '@st-api/firebase';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { safeAsync } from '@st-api/core';
-import { signInWithCustomToken } from 'firebase/auth';
+
 import { UNAUTHORIZED } from './exceptions.js';
 
 const logger = Logger.create('AuthorizerCallable');
@@ -18,9 +19,12 @@ export const authorizerCallable = createCallableHandler({
       token: z.string().trim().min(1).max(5000),
       path: z.string().trim().min(1).max(5000),
     }),
-    response: z.object({}),
+    response: z.object({
+      userId: z.number(),
+      externalId: z.string(),
+    }),
   }),
-  name: 'authorize',
+  name: 'id',
   handle: async (request) => {
     logger.info('request', {
       request: {
@@ -29,25 +33,9 @@ export const authorizerCallable = createCallableHandler({
       },
     });
     const firebaseAdminAuth = inject(FirebaseAdminAuth);
-    const firebaseAuth = inject(FirebaseAuth);
-    const [errorCustomToken, credential] = await safeAsync(() =>
-      signInWithCustomToken(firebaseAuth, request.data.token),
-    );
-    if (errorCustomToken) {
-      logger.info({
-        errorCustomToken,
-        a: JSON.stringify({
-          error: errorCustomToken,
-          errorString: String(errorCustomToken),
-        }),
-      });
-      throw UNAUTHORIZED();
-    }
-    logger.info({ credential });
-    const token = await credential.user.getIdToken();
-    logger.info({ token });
-    const [error, user] = await safeAsync(() =>
-      firebaseAdminAuth.verifyIdToken(token),
+    const drizzle = inject(Drizzle);
+    const [error, userFirebase] = await safeAsync(() =>
+      firebaseAdminAuth.verifyIdToken(request.data.token),
     );
     if (error) {
       logger.info({
@@ -55,7 +43,20 @@ export const authorizerCallable = createCallableHandler({
       });
       throw UNAUTHORIZED();
     }
-    logger.info({ user });
-    return {};
+    // TODO use cache to find userId
+    const user = await drizzle.query.usrUser.findFirst({
+      columns: {
+        id: true,
+        externalId: true,
+      },
+      where: eq(usr.user.externalId, userFirebase.uid),
+    });
+    if (!user) {
+      throw new Error('user not found');
+    }
+    return {
+      userId: user.id,
+      externalId: userFirebase.uid,
+    };
   },
 });

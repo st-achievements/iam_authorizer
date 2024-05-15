@@ -1,8 +1,8 @@
 import { Controller, Post } from '@nestjs/common';
+import { safeAsync, ZBody, zDto, ZRes } from '@st-api/core';
 import { FirebaseAdminAuth, FirebaseAuth } from '@st-api/firebase';
-import { ZBody, zDto, ZRes } from '@st-api/core';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { z } from 'zod';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
 class LoginDto extends zDto(
   z.object({
@@ -18,18 +18,29 @@ export class AppController {
     private readonly firebaseAuth: FirebaseAuth,
   ) {}
 
+  private async checkUser({ password, email }: LoginDto) {
+    const [error] = await safeAsync(() =>
+      this.firebaseAdminAuth.getUserByEmail('gui.stlmpp@gmail.com'),
+    );
+    if (error) {
+      await this.firebaseAdminAuth.createUser({
+        email,
+        password,
+      });
+    }
+  }
+
   @ZRes(z.object({ token: z.string() }))
   @Post('login')
   async login(@ZBody() { password, email }: LoginDto) {
+    await this.checkUser({ password, email });
     const user = await signInWithEmailAndPassword(
       this.firebaseAuth,
       email,
       password,
     );
-    const token = await this.firebaseAdminAuth.createCustomToken(
-      user.user.uid,
-      {},
-    );
+    const token = await user.user.getIdToken();
+    await signOut(this.firebaseAuth);
     return {
       token,
     };
