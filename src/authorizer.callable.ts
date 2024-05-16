@@ -44,6 +44,7 @@ export const authorizerCallable = createCallableHandler({
       firebaseAdminAuth.verifyIdToken(request.data.token),
     );
     if (error) {
+      // TODO better error handling, add a mapping of errors
       logger.info({
         error,
       });
