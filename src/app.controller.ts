@@ -18,9 +18,10 @@ export class AppController {
     private readonly firebaseAuth: FirebaseAuth,
   ) {}
 
+  // TODO remove this
   private async checkUser({ password, email }: LoginDto) {
     const [error] = await safeAsync(() =>
-      this.firebaseAdminAuth.getUserByEmail('gui.stlmpp@gmail.com'),
+      this.firebaseAdminAuth.getUserByEmail(email),
     );
     if (error) {
       await this.firebaseAdminAuth.createUser({
@@ -30,6 +31,7 @@ export class AppController {
     }
   }
 
+  // TODO remove this
   @ZRes(z.object({ token: z.string() }))
   @Post('login')
   async login(@ZBody() { password, email }: LoginDto) {
