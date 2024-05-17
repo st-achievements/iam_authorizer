@@ -11,18 +11,17 @@ import { z } from 'zod';
 
 import { UNAUTHORIZED, USER_NOT_CREATED } from './exceptions.js';
 
-const logger = Logger.create('AuthorizerCallable');
+const logger = Logger.create('IdAuthorizerCallable');
 const cache = new Map<
   string,
   Pick<InferSelectModel<typeof usr.user>, 'id' | 'name' | 'externalId'>
 >();
 
-export const authorizerCallable = createCallableHandler({
+export const idAuthorizerCallable = createCallableHandler({
+  name: 'id',
   schema: () => ({
     request: z.object({
       token: z.string().trim().min(1).max(5000),
-      // TODO define how paths must be validated, maybe in the database?
-      path: z.string().trim().min(1).max(5000),
     }),
     response: z.object({
       userId: z.number(),
@@ -30,24 +29,14 @@ export const authorizerCallable = createCallableHandler({
       personaName: z.string(),
     }),
   }),
-  name: 'id',
   handle: async (request) => {
-    logger.info('request', {
-      request: {
-        data: request.data,
-        auth: request.auth ?? null,
-      },
-    });
     const firebaseAdminAuth = inject(FirebaseAdminAuth);
     const drizzle = inject(Drizzle);
     const [error, userFirebase] = await safeAsync(() =>
       firebaseAdminAuth.verifyIdToken(request.data.token),
     );
     if (error) {
-      // TODO better error handling, add a mapping of errors
-      logger.info({
-        error,
-      });
+      logger.info('Response from firebase admin', { error });
       throw UNAUTHORIZED();
     }
     const user =
@@ -61,6 +50,9 @@ export const authorizerCallable = createCallableHandler({
         where: eq(usr.user.externalId, userFirebase.uid),
       }));
     if (!user) {
+      logger.info(
+        'The user already exists on firebase, but it does not exists in the database',
+      );
       throw USER_NOT_CREATED();
     }
     cache.set(userFirebase.uid, user);

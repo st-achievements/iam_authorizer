@@ -3,8 +3,6 @@ import { DrizzleOrmModule } from '@st-achievements/database';
 import { CoreModule } from '@st-api/core';
 import { FirebaseAdminModule, FirebaseModule } from '@st-api/firebase';
 
-import { AppController } from './app.controller.js';
-
 @Module({
   imports: [
     CoreModule.forRoot(),
@@ -12,6 +10,5 @@ import { AppController } from './app.controller.js';
     FirebaseAdminModule.forRoot(),
     DrizzleOrmModule,
   ],
-  controllers: [AppController],
 })
 export class AppModule {}
