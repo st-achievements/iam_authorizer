@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { DrizzleOrmModule } from '@st-achievements/database';
 import { CoreModule } from '@st-api/core';
-import { FirebaseAdminModule } from '@st-api/firebase';
+import { AchievementsCoreModule } from '@st-achievements/core';
 
 @Module({
   imports: [
     CoreModule.forRoot(),
-    FirebaseAdminModule.forRoot(),
+    AchievementsCoreModule.forRoot({
+      authentication: false,
+      throttling: false,
+    }),
     DrizzleOrmModule,
   ],
 })

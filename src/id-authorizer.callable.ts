@@ -26,7 +26,7 @@ export const idAuthorizerCallable = createCallableHandler({
     response: z.object({
       userId: z.number(),
       externalId: z.string(),
-      personaName: z.string(),
+      username: z.string(),
     }),
   }),
   handle: async (request) => {
@@ -59,7 +59,7 @@ export const idAuthorizerCallable = createCallableHandler({
     return {
       userId: user.id,
       externalId: userFirebase.uid,
-      personaName: user.name,
+      username: user.name,
     };
   },
 });
